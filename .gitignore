@@ -130,3 +130,4 @@ amino*.tar.gz
 /doc/html/
 /doc/doxygen_sqlite3.db
 /memregion
+*.pyc
