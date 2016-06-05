@@ -1,23 +1,55 @@
 #!/usr/bin/env python
 
-from ctypes import *
+import libamino as aa
 
-libamino = cdll.LoadLibrary("libamino.so")
+######################
+## Principal Angles ##
+######################
 
-print libamino
+class PrincipalAngle:
+    __slots__ = ['angle']
 
-class QuatStruct(Structure):
-    _fields_ = [("x", c_double),
-                ("y", c_double),
-                ("z", c_double),
-                ("w", c_double)]
+    def __init__(self,angle):
+        self.angle = angle
+
+class XAngle(PrincipalAngle):
+    def quat(self):
+        return aa.tf_xangle2quat(self.angle, aa.QuatStruct())
+
+    def __str__(self):
+        return "<YAngle " + str(self.angle) + ">"
+
+class YAngle(PrincipalAngle):
+    def quat(self):
+        return aa.tf_yangle2quat(self.angle, aa.QuatStruct())
+
+    def __str__(self):
+        return "<YAngle " + str(self.angle) + ">"
+
+class ZAngle(PrincipalAngle):
+    def quat(self):
+        return aa.tf_zangle2quat(self.angle, aa.QuatStruct() )
+
+    def __str__(self):
+        return "<YAngle " + str(self.angle) + ">"
+
+##########################
+## Ordinary Quaternions ##
+##########################
 
 class Quat:
-    def __init__(self):
-        self.data = QuatStruct(0,0,0,1)
+    __slots__ = ['data']
 
-    def __init__(self,x,y,z,w):
-        self.data = QuatStruct(x,y,z,w)
+    @staticmethod
+    def from_xyzw(x,y,z,w):
+        return Quat(aa.QuatStruct(x,y,z,w))
+
+    # Conversion Constructor
+    def __init__(self, thing):
+        self.data = thing.quat()
+
+    def quat(self):
+        return self.data
 
     def __str__(self):
         return ("<Quat [" +
@@ -28,4 +60,4 @@ class Quat:
                 "]>")
 
     def normalize(self):
-        libamino.aa_tf_qnormalize(byref(self.data))
+        return Quat(aa.tf_qnormalize(self.data.copy()))
