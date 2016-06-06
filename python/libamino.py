@@ -56,3 +56,12 @@ def tf_yangle2quat(angle,q):
 def tf_zangle2quat(angle,q):
     lib.aa_tf_zangle2quat(c_double(angle),byref(q))
     return q
+
+
+lib.aa_tf_vdot.restype = c_double
+def tf_vdot(a,b):
+    return lib.aa_tf_vdot(byref(a), byref(b))
+
+def tf_cross(a,b,c):
+    lib.aa_tf_cross(byref(a), byref(b), byref(c))
+    return c
