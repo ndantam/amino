@@ -57,6 +57,16 @@ def tf_zangle2quat(angle,q):
     lib.aa_tf_zangle2quat(c_double(angle),byref(q))
     return q
 
+def tf_rotmat2quat(R,q):
+    lib.aa_tf_rotmat2quat(byref(R),byref(q))
+    return q
+
+def tf_eulerzyx2quat(z,y,x,q):
+    lib.aa_tf_eulerzyx2quat(c_double(z),
+                            c_double(y),
+                            c_double(x),
+                            byref(q))
+    return q
 
 lib.aa_tf_vdot.restype = c_double
 def tf_vdot(a,b):
@@ -65,3 +75,42 @@ def tf_vdot(a,b):
 def tf_cross(a,b,c):
     lib.aa_tf_cross(byref(a), byref(b), byref(c))
     return c
+
+#####################
+## Rotation Matrix ##
+#####################
+
+def tf_xangle2rotmat(angle,R):
+    lib.aa_tf_xangle2rotmat(c_double(angle),byref(R))
+    return R
+
+def tf_yangle2rotmat(angle,R):
+    lib.aa_tf_yangle2rotmat(c_double(angle),byref(R))
+    return R
+
+def tf_zangle2rotmat(angle,R):
+    lib.aa_tf_zangle2rotmat(c_double(angle),byref(R))
+    return R
+
+def tf_quat2rotmat(q,R):
+    lib.aa_tf_quat2rotmat(byref(q),byref(R))
+    return R
+
+def tf_eulerzyx2rotmat(z,y,x,R):
+    lib.aa_tf_eulerzyx2rotmat(c_double(z),
+                              c_double(y),
+                              c_double(x),
+                              byref(R))
+    return R
+
+##################
+## Euler Angles ##
+##################
+
+def tf_rotmat2eulerzyx(R,e):
+    lib.aa_tf_rotmat2eulerzyx(byref(R), byref(e))
+    return e
+
+def tf_quat2eulerzyx(q,e):
+    lib.aa_tf_quat2eulerzyx(byref(q), byref(e))
+    return e
