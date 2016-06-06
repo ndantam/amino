@@ -15,11 +15,14 @@ class PrincipalAngle:
         self.angle = angle
 
     def __mul__(self,other):
-        return Quat(self) * Quat(other)
+        return quat(self) * other
+
+    def __rmul__(self,other):
+        return other * quat(self)
 
 class XAngle(PrincipalAngle):
     """A rotation about the X axis"""
-    def quat(self,other):
+    def _quat(self,other):
         """Convert `self' to the quaternion and store in `other'"""
         return aa.tf_xangle2quat(self.angle, other)
 
@@ -29,7 +32,7 @@ class XAngle(PrincipalAngle):
 
 class YAngle(PrincipalAngle):
     """A rotation about the Y axis"""
-    def quat(self, other):
+    def _quat(self, other):
         """Convert `self' to the quaternion and store in `other'"""
         return aa.tf_yangle2quat(self.angle, other)
 
@@ -38,7 +41,7 @@ class YAngle(PrincipalAngle):
 
 class ZAngle(PrincipalAngle):
     """A rotation about the Z axis"""
-    def quat(self, other):
+    def _quat(self, other):
         """Convert `self' to the quaternion and store in `other'"""
         return aa.tf_zangle2quat(self.angle, other )
 
@@ -59,7 +62,7 @@ class Vec(ctypes.Structure):
     @staticmethod
     def from_xyz(x,y,z):
         """Create a vector from x, y, and z components"""
-        return Vec((x,y,z))
+        return Vec(x,y,z)
 
     @staticmethod
     def create():
@@ -71,15 +74,7 @@ class Vec(ctypes.Structure):
         """Ensure that `thing' is a vector"""
         if isinstance(thing,Vec):
             return thing
-        else: return Vec(thing)
-
-    def __init__(self,other):
-        if type(other) is list:
-            super(Vec,self).__init__(other[0],other[1],other[2])
-        elif type(other) is tuple:
-            super(Vec,self).__init__(other[0],other[1],other[2])
-        else:
-            other.vec(self)
+        else: return vec(thing)
 
     def __str__(self):
         return "({0}i + {1}j + {2}k)".format(self.x,
@@ -91,7 +86,7 @@ class Vec(ctypes.Structure):
                                              self.y,
                                              self.z )
 
-    def vec(self,other):
+    def _vec(self,other):
         other.x = self.x
         other.y = self.y
         other.z = self.z
@@ -133,9 +128,14 @@ class Vec(ctypes.Structure):
     #def __abs__(self):
     #   return sqrt( self.x * self.x + s
 
-def vec(x,y,z):
-    """Create a vector from components x, y, and z"""
-    return Vec.from_xyz(x,y,z)
+def vec(other):
+    """Create a vector from some other type"""
+    if type(other) is list:
+        return Vec.from_xyz(other[0],other[1],other[2])
+    elif type(other) is tuple:
+        return Vec.from_xyz(other[0],other[1],other[2])
+    else:
+        return other._vec(self,Vec())
 
 def dot(a,b):
     """Compute the dot product"""
@@ -160,7 +160,7 @@ class Quat(ctypes.Structure):
     @staticmethod
     def from_xyzw(x,y,z,w):
         """Create a quaternion from x, y, z, and w components"""
-        return Quat((x,y,z,w))
+        return Quat(x,y,z,w)
 
     @staticmethod
     def create():
@@ -182,30 +182,15 @@ class Quat(ctypes.Structure):
         if isinstance(thing,Quat):
             return thing
         else:
-            return Quat(thing)
+            return quat(thing)
 
-
-    def __init__(self,thing):
-        """Construct a quaternion representing `thing'"""
-        if type(thing) is list:
-            super(Quat,self).__init__(thing[0],thing[1],thing[2],thing[3])
-        elif type(thing) is tuple:
-            super(Quat,self).__init__(thing[0],thing[1],thing[2],thing[3])
-        elif type(thing) is float:
-            super(Quat,self).__init__(0.0, 0.0, 0.0, thing)
-        elif type(thing) is int:
-            super(Quat,self).__init__(0.0, 0.0, 0.0, float(thing))
-        elif type(thing) is complex:
-            super(Quat,self).__init__(thing.imag, 0.0, 0.0, thing.real)
-        else:
-            thing.quat(self)
-
-    def quat(self,other):
+    def _quat(self,other):
         """Copy `self' into the quaternion `other'"""
         other.x = self.x
         other.y = self.y
         other.z = self.z
         other.w = self.w
+        return other
 
     def __str__(self):
         return "({0} + {1}i + {2}j + {3}k)".format( self.w,
@@ -285,9 +270,20 @@ class Quat(ctypes.Structure):
         elif 3 == i: self.w = value
         else: raise IndexError
 
-def quat(x,y,z, w):
-    """Create a vector from components x, y, and z"""
-    return Quat.from_xyzw(x,y,z,w)
+def quat(thing):
+    """Construct a quaternion representing `thing'"""
+    if type(thing) is list:
+        return Quat.from_xyzw(thing[0],thing[1],thing[2],thing[3])
+    elif type(thing) is tuple:
+        return Quat.from_xyzw(thing[0],thing[1],thing[2],thing[3])
+    elif type(thing) is float:
+        return Quat.from_xyzw(0.0, 0.0, 0.0, thing)
+    elif type(thing) is int:
+        return Quat.from_xyzw(0.0, 0.0, 0.0, float(thing))
+    elif type(thing) is complex:
+        return Quat.from_xyzw(thing.imag, 0.0, 0.0, thing.real)
+    else:
+        return thing._quat(Quat())
 
 ######################
 ## Dual Quaternions ##
@@ -302,6 +298,8 @@ def quat(x,y,z, w):
 #                 ("dy", ctypes.c_double),
 #                 ("dz", ctypes.c_double),
 #                 ("dw", ctypes.c_double)]
+
+#     def __str__(self)
 
 #############################
 ## Quaternions-Translation ##
