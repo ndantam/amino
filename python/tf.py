@@ -289,17 +289,25 @@ def quat(thing):
 ## Dual Quaternions ##
 ######################
 
-# class DuQu(ctypes.Structure):
-#     _fields_ = [("rx", ctypes.c_double),
-#                 ("ry", ctypes.c_double),
-#                 ("rz", ctypes.c_double),
-#                 ("rw", ctypes.c_double)
-#                 ("dx", ctypes.c_double),
-#                 ("dy", ctypes.c_double),
-#                 ("dz", ctypes.c_double),
-#                 ("dw", ctypes.c_double)]
+class DuQu(ctypes.Structure):
+    _fields_ = [("rx", ctypes.c_double),
+                ("ry", ctypes.c_double),
+                ("rz", ctypes.c_double),
+                ("rw", ctypes.c_double),
+                ("dx", ctypes.c_double),
+                ("dy", ctypes.c_double),
+                ("dz", ctypes.c_double),
+                ("dw", ctypes.c_double)]
 
-#     def __str__(self)
+    def __str__(self):
+        return "({0}+{1}i+{2}j+{3}k) +  ({4}+{5}i+{6}j+{7}k)e".format(
+            self.rw, self.rx, self.ry, self.rz,
+            self.dw, self.dx, self.dy, self.dz )
+
+    def __repr__(self):
+        return "DuQu({0}, {1}, {2}, {3},   {4}, {5}, {6}, {7})".format(
+            self.rx, self.ry, self.rz, self.rw,
+            self.dx, self.dy, self.dz, self.dw )
 
 #############################
 ## Quaternions-Translation ##
