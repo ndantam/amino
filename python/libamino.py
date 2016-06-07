@@ -4,6 +4,23 @@ from ctypes import *
 
 lib = cdll.LoadLibrary("libamino.so")
 
+##########
+## Util ##
+##########
+
+def fcpy(dst,src,cnt):
+    memmove( byref(dst),
+             byref(src),
+             c_size_t(cnt*sizeof(c_double)) )
+    return dst
+
+def fzero(dst,cnt):
+    memset( byref(dst), c_int(0),
+            c_size_t(cnt*sizeof(c_double)) )
+    return dst
+
+
+
 ##########################
 ## Ordinary Quaternions ##
 ##########################
@@ -114,3 +131,39 @@ def tf_rotmat2eulerzyx(R,e):
 def tf_quat2eulerzyx(q,e):
     lib.aa_tf_quat2eulerzyx(byref(q), byref(e))
     return e
+
+#####################
+## Dual Quaternion ##
+#####################
+
+def tf_qv2duqu(q,v,s):
+    lib.aa_tf_qv2duqu(byref(q),byref(v),byref(s))
+    return s
+
+def tf_duqu_trans(s,v):
+    lib.aa_tf_duqu_trans(byref(s),byref(v))
+    return v
+
+def tf_duqu_ln(s,r):
+    lib.aa_tf_duqu_ln(byref(s),byref(r))
+    return r
+
+def tf_duqu_exp(s,r):
+    lib.aa_tf_duqu_exp(byref(s),byref(r))
+    return r
+
+def tf_duqu_conj(s,r):
+    lib.aa_tf_duqu_conj(byref(s),byref(r))
+    return r
+
+def tf_duqu_mul(a,b,c):
+    lib.aa_tf_duqu_mul(byref(a),byref(b),byref(c))
+    return c
+
+def tf_duqu_add(a,b,c):
+    lib.aa_tf_duqu_add(byref(a),byref(b),byref(c))
+    return c
+
+def tf_duqu_sub(a,b,c):
+    lib.aa_tf_duqu_sub(byref(a),byref(b),byref(c))
+    return c

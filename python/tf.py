@@ -120,9 +120,7 @@ class Vec(ctypes.Structure):
                                              self.z )
 
     def _vec(self,other):
-        other.x = self.x
-        other.y = self.y
-        other.z = self.z
+        return aa.fcpy(other,self,3)
 
     def cross(self, other):
         """Compute the cross product"""
@@ -168,7 +166,7 @@ def vec(other):
     elif type(other) is tuple:
         return Vec.from_xyz(other[0],other[1],other[2])
     else:
-        return other._vec(self,Vec())
+        return other._vec(Vec.create())
 
 def dot(a,b):
     """Compute the dot product"""
@@ -219,11 +217,7 @@ class Quat(ctypes.Structure):
 
     def _quat(self,other):
         """Copy `self' into the quaternion `other'"""
-        other.x = self.x
-        other.y = self.y
-        other.z = self.z
-        other.w = self.w
-        return other
+        return aa.fcpy(other,self,4)
 
     def _rotmat(self,other):
         return aa.tf_quat2rotmat(self,other)
@@ -291,7 +285,7 @@ class Quat(ctypes.Structure):
         return Quat.from_xyzw( -self.x, -self.y, -self.z, -self.w )
 
     def __pos__(self):
-        return Quat(self)
+        return self._quat(Quat.create())
 
     def __invert__(self):
         return aa.tf_qinv(self, Quat.create())
@@ -420,6 +414,9 @@ class EulerZYX(ctypes.Structure):
     def _quat(self,other):
         return aa.tf_eulerzyx2quat(self.z,self.y,self.x,other)
 
+    def _duqu(self,other):
+        return aa.tf_eulerzyx2quat(self.z,self.y,self.x,other)
+
     def _rotmat(self,other):
         return aa.tf_eulerzyx2rotmat(self.z,self.y,self.x,other)
 
@@ -476,9 +473,101 @@ class DuQu(ctypes.Structure):
             self.rx, self.ry, self.rz, self.rw,
             self.dx, self.dy, self.dz, self.dw )
 
+    def real(self):
+        return Quat.from_xyzw( self.rx, self.ry, self.rz, self.rw )
+
+    def dual(self):
+        return Quat.from_xyzw( self.dx, self.dy, self.dz, self.dw )
+
+    def _duqu(self,other):
+        return aa.fcpy(other,self,8)
+
+    def orientation(self):
+        return self.real()
+
+    def translation(self):
+        return aa.tf_duqu_trans(self,Vec.create())
+
+
+    def __mul__(self, other):
+        return aa.tf_duqu_mul( self, DuQu.ensure(other), DuQu.create() )
+
+    def __rmul__(self, other):
+        return aa.tf_duqu_mul( DuQu.ensure(other), self, DuQu.create() )
+
+    def __add__(self, other):
+        return aa.tf_duqu_add( self, DuQu.ensure(other), DuQu.create() )
+
+    def __radd__(self, other):
+        return aa.tf_duqu_add( DuQu.ensure(other), self, DuQu.create() )
+
+    def __sub__(self, other):
+        return aa.tf_duqu_sub( self, DuQu.ensure(other), DuQu.create() )
+
+    def __rsub__(self, other):
+        return aa.tf_duqu_sub( DuQu.ensure(other), self, DuQu.create() )
+
+
+
+    def __neg__(self):
+        return DuQu.from_elts( -self.rx, -self.ry, -self.rz, -self.rw,
+                               -self.dx, -self.dy, -self.dz, -self.dw )
+
+    def __pos__(self):
+        return self._duqu(DuQu.create())
+
+
+    def __len__(self):
+        return 8
+
+    def __getitem__(self,i):
+        if   0 == i: return self.rx
+        elif 1 == i: return self.ry
+        elif 2 == i: return self.rz
+        elif 3 == i: return self.rw
+        elif 4 == i: return self.dx
+        elif 5 == i: return self.dy
+        elif 6 == i: return self.dz
+        elif 7 == i: return self.dw
+        else: raise IndexError
+
+    def __setitem__(self,i,value):
+        if   0 == i: self.rx = value
+        elif 1 == i: self.ry = value
+        elif 2 == i: self.rz = value
+        elif 3 == i: self.rw = value
+        elif 4 == i: self.dx = value
+        elif 5 == i: self.dy = value
+        elif 6 == i: self.dz = value
+        elif 7 == i: self.dw = value
+        else: raise IndexError
+
 def duqu(thing):
     """Convert `thing' to a dual quaternion"""
-    return thing._duqu(DuQu.create())
+    if type(thing) is list:
+        return DuQu.from_elts( thing[0],thing[1],thing[2],thing[3],
+                               thing[4],thing[5],thing[6],thing[7] )
+    elif type(thing) is tuple:
+        return DuQu.from_elts( thing[0],thing[1],thing[2],thing[3],
+                               thing[4],thing[5],thing[6],thing[7] )
+    elif type(thing) is float:
+        return DuQu.from_elts(0.0, 0.0, 0.0, thing,
+                              0.0, 0.0, 0.0, 0.0)
+    elif type(thing) is int:
+        return DuQu.from_elts(0.0, 0.0, 0.0, float(thing),
+                              0.0, 0.0, 0.0, 0.0)
+    elif type(thing) is complex:
+        return DuQu.from_elts(thing.imag, 0.0, 0.0, thing.real,
+                              0.0, 0.0, 0.0, 0.0)
+    else:
+        return thing._duqu(DuQu.create())
+
+def duqu2(orientation,translation):
+    """Convert `thing' to a dual quaternion"""
+    q = Quat.ensure(orientation)
+    v = Vec.ensure(translation)
+    return aa.tf_qv2duqu(q,v,DuQu.create())
+
 
 #############################
 ## Quaternions-Translation ##
