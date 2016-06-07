@@ -120,6 +120,25 @@ def tf_eulerzyx2rotmat(z,y,x,R):
                               byref(R))
     return R
 
+def tf_rotmat_mul(a,b,c):
+    lib.aa_tf_rotmat_mul(byref(a), byref(b), byref(c))
+    return c
+
+###########################
+## Transformation Matrix ##
+###########################
+
+def tf_duqu2tfmat(s,t):
+    lib.aa_tf_duqu2tfmat(byref(s),byref(t))
+    return t
+
+def tf_tfmat_mul(a,b,c):
+    lib.aa_tf_tfmat_mul(byref(a),byref(b),byref(c))
+    return c
+
+
+
+
 ##################
 ## Euler Angles ##
 ##################
@@ -167,3 +186,8 @@ def tf_duqu_add(a,b,c):
 def tf_duqu_sub(a,b,c):
     lib.aa_tf_duqu_sub(byref(a),byref(b),byref(c))
     return c
+
+
+def tf_tfmat2duqu(s,t):
+    lib.aa_tf_tfmat2duqu(byref(s),byref(t))
+    return t

@@ -1,13 +1,26 @@
 #!/usr/bin/env python
 
 import libamino as aa
+reload(aa)
+
 import ctypes
+
+class Orientation(object):
+    __slots__=[]
+    def orientation(self):
+        return self._quat(Quat.create())
+    def rotation(self):
+        return self._rotmat(RotMat.create())
+
+class OrientationStruct(ctypes.Structure,Orientation):
+    __slots__=[]
+
 
 ######################
 ## Principal Angles ##
 ######################
 
-class PrincipalAngle(object):
+class PrincipalAngle(Orientation):
     """A rotation about a principal axis"""
     __slots__ = ['angle']
 
@@ -19,6 +32,7 @@ class PrincipalAngle(object):
 
     def __rmul__(self,other):
         return other * quat(self)
+
 
     def _duqu(self,other):
         """Convert `self' to a dual quaternion and store in `other'"""
@@ -91,6 +105,7 @@ class Vec(ctypes.Structure):
     _fields_ = [("x", ctypes.c_double),
                 ("y", ctypes.c_double),
                 ("z", ctypes.c_double)]
+    __slots__=[]
 
     @staticmethod
     def from_xyz(x,y,z):
@@ -105,9 +120,7 @@ class Vec(ctypes.Structure):
     @staticmethod
     def ensure(thing):
         """Ensure that `thing' is a vector"""
-        if isinstance(thing,Vec):
-            return thing
-        else: return vec(thing)
+        return thing if isinstance(thing,Vec) else vec(thing)
 
     def __str__(self):
         return "({0}i + {1}j + {2}k)".format(self.x,
@@ -180,13 +193,14 @@ def cross(a,b):
 ## Ordinary Quaternions ##
 ##########################
 
-class Quat(ctypes.Structure):
+class Quat(OrientationStruct):
     """Ordinary Quaternions"""
 
     _fields_ = [("x", ctypes.c_double),
                 ("y", ctypes.c_double),
                 ("z", ctypes.c_double),
                 ("w", ctypes.c_double)]
+    __slots__=[]
 
     @staticmethod
     def from_xyzw(x,y,z,w):
@@ -209,11 +223,7 @@ class Quat(ctypes.Structure):
 
         If `thing' is a quaternion, return it.
         Otherwise, convert `thing' to a quaternion"""
-
-        if isinstance(thing,Quat):
-            return thing
-        else:
-            return quat(thing)
+        return thing if isinstance(thing,Quat) else quat(thing)
 
     def _quat(self,other):
         """Copy `self' into the quaternion `other'"""
@@ -224,6 +234,12 @@ class Quat(ctypes.Structure):
 
     def _eulerzyx(self,other):
         return aa.tf_quat2eulerzyx(self,other)
+
+    def orientation(self):
+        return self._quat(Quat.create())
+
+    def rotation(self):
+        return self._rotmat(RotMat.create())
 
     def _duqu(self,other):
         """Copy `self' into the dual quaternion `other'"""
@@ -330,9 +346,10 @@ def quat(thing):
 #####################
 ## Rotation Matrix ##
 #####################
-class RotMat(ctypes.Array):
+class RotMat(ctypes.Array,Orientation):
     _length_ = 9
     _type_ = ctypes.c_double
+    __slots__=[]
 
     @staticmethod
     def from_elts(xx,yx,zx, xy,yy,zy, xz,yz,zz):
@@ -348,6 +365,11 @@ class RotMat(ctypes.Array):
     def create():
         """Create a dual quaternion"""
         return RotMat.identity()
+
+    @staticmethod
+    def ensure(thing):
+        """Ensure `thing' is a rotation matrix"""
+        return thing if isinstance(thing,RotMat) else rotmat(thing)
 
     def _quat(self,other):
         return aa.tf_rotmat2quat(self,other)
@@ -379,19 +401,97 @@ class RotMat(ctypes.Array):
             self[6], self[7], self[8]
         )
 
+    def __mul__(self,other):
+        return aa.tf_rotmat_mul(self,RotMat.ensure(other),RotMat.create())
+
+    def __rmul__(self,other):
+        return aa.tf_rotmat_mul(RotMat.ensure(other),self,RotMat.create())
+
 def rotmat(thing):
     """Convert `thing' to a rotation matrix"""
     return thing._rotmat(RotMat())
+
+###########################
+## Transformation Matrix ##
+###########################
+class TfMat(ctypes.Array):
+    _length_ = 12
+    _type_ = ctypes.c_double
+    __slots__=[]
+
+    @staticmethod
+    def from_elts(xx,yx,zx, xy,yy,zy, xz,yz,zz, tx,ty,tz):
+        """Create a rotation matrix from elements"""
+        return TfMat(xx,yz,zx, xy,yy,zy, xz,yz,zz, tx,ty,tz)
+
+    @staticmethod
+    def identity():
+        """Create a dual quaternion"""
+        return TfMat(1,0,0, 0,1,0, 0,0,1, 0,0,0)
+
+    @staticmethod
+    def create():
+        """Create a dual quaternion"""
+        return TfMat.identity()
+
+    @staticmethod
+    def ensure(thing):
+        """Ensure that `thing' is a TfMat"""
+        return thing if isinstance(thing,TfMat) else tfmat(thing)
+
+    def _duqu(self,other):
+        return aa.tf_tfmat2duqu(self,other)
+
+    def translation(self):
+        return Vec.from_xyz(self[9],self[10],self[11])
+
+    def orientation(self):
+        return aa.tf_rotmat2quat(self,Quat.create())
+
+    def rotation(self):
+        return aa.fcpy(RotMat.create(),self,9)
+
+    def __mul__(self,other):
+        return aa.tf_tfmat_mul(self,TfMat.ensure(other),TfMat.create())
+
+    def __rmul__(self,other):
+        return aa.tf_tfmat_mul(TfMat.ensure(other),self,TfMat.create())
+
+    def __repr__(self):
+        return "TfMat({0},{1},{2}, {3},{4},{5}, {6},{7},{8}, {9},{10},{11})".format(
+            self[0], self[1], self[2],
+            self[3], self[4], self[5],
+            self[6], self[7], self[8],
+            self[9], self[10], self[11]
+        )
+
+    def __str__(self):
+        return ("[{0}\t{3}\t{6}\t| {9}]\n" +
+                "[{1}\t{4}\t{7}\t| {10}]\n" +
+                "[{2}\t{5}\t{8}\t| {11}]\n" +
+                "[0.0\t0.0\t0.0\t| 1.0]" ).format(
+            self[0], self[1], self[2],
+            self[3], self[4], self[5],
+            self[6], self[7], self[8],
+            self[9], self[10], self[11]
+        )
+
+def tfmat(thing):
+    """Convert `thing' to a rotation matrix"""
+    return thing._tfmat(TfMat.create())
+
+
 
 
 #################
 ## Euler Angle ##
 #################
 
-class EulerZYX(ctypes.Structure):
+class EulerZYX(OrientationStruct):
     _fields_ = [("z", ctypes.c_double),
                 ("y", ctypes.c_double),
                 ("x", ctypes.c_double)]
+    __slots__=[]
 
     @staticmethod
     def from_zyx(z,y,x):
@@ -416,6 +516,12 @@ class EulerZYX(ctypes.Structure):
 
     def _duqu(self,other):
         return aa.tf_eulerzyx2quat(self.z,self.y,self.x,other)
+
+    def orientation(self):
+        return self._quat(Quat.create())
+
+    def rotation(self):
+        return self._rotmat(RotMat.create())
 
     def _rotmat(self,other):
         return aa.tf_eulerzyx2rotmat(self.z,self.y,self.x,other)
@@ -444,6 +550,7 @@ class DuQu(ctypes.Structure):
                 ("dy", ctypes.c_double),
                 ("dz", ctypes.c_double),
                 ("dw", ctypes.c_double)]
+    __slots__=[]
 
     @staticmethod
     def from_elts(rx,ry,rz,rw, dx,dy,dz,dw):
@@ -458,9 +565,7 @@ class DuQu(ctypes.Structure):
     @staticmethod
     def ensure(thing):
         """Ensure that `thing' is a vector"""
-        if isinstance(thing,DuQu):
-            return thing
-        else: return duqu(thing)
+        return thing if isinstance(thing,DuQu) else duqu(thing)
 
 
     def __str__(self):
@@ -482,8 +587,14 @@ class DuQu(ctypes.Structure):
     def _duqu(self,other):
         return aa.fcpy(other,self,8)
 
+    def _tfmat(self,other):
+        return aa.tf_duqu2tfmat(self,other)
+
     def orientation(self):
         return self.real()
+
+    def rotation(self):
+        return aa.tf_quat2rotmat(self,RotMat.create())
 
     def translation(self):
         return aa.tf_duqu_trans(self,Vec.create())
@@ -493,7 +604,7 @@ class DuQu(ctypes.Structure):
         return aa.tf_duqu_mul( self, DuQu.ensure(other), DuQu.create() )
 
     def __rmul__(self, other):
-        return aa.tf_duqu_mul( DuQu.ensure(other), self, DuQu.create() )
+       return aa.tf_duqu_mul( DuQu.ensure(other), self, DuQu.create() )
 
     def __add__(self, other):
         return aa.tf_duqu_add( self, DuQu.ensure(other), DuQu.create() )
