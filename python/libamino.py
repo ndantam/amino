@@ -137,7 +137,13 @@ def tf_tfmat_mul(a,b,c):
     return c
 
 
+def tf_qv2tfmat(q,v,t):
+    lib.aa_tf_qv2tfmat(byref(q),byref(v),byref(t))
+    return t
 
+
+def tf_tfmat2qv(t,q,v):
+    lib.aa_tf_tfmat2qv(byref(t),byref(q),byref(v))
 
 ##################
 ## Euler Angles ##
@@ -187,7 +193,19 @@ def tf_duqu_sub(a,b,c):
     lib.aa_tf_duqu_sub(byref(a),byref(b),byref(c))
     return c
 
-
 def tf_tfmat2duqu(s,t):
     lib.aa_tf_tfmat2duqu(byref(s),byref(t))
     return t
+
+
+############################
+## Quaternion-Translation ##
+############################
+
+def tf_qv_chain(aq,av,bq,bv,cq,cv):
+    lib.aa_tf_qv_chain( byref(aq), byref(av),
+                        byref(bq), byref(bv),
+                        byref(cq), byref(cv))
+
+def tf_duqu2qv(s,q,v):
+    lib.aa_tf_duqu2qv( byref(s), byref(q), byref(v) )

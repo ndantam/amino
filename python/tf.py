@@ -12,6 +12,28 @@ class Orientation(object):
     def rotation(self):
         return self._rotmat(RotMat.create())
 
+    def _qutr(self,other):
+        other.vec.x = 0.0
+        other.vec.y = 0.0
+        other.vec.z = 0.0
+        self._quat(other.quat)
+        return other
+
+    def _duqu(self,other):
+        """Convert `self' to a dual quaternion and store in `other'"""
+        other.dx=0.0
+        other.dy=0.0
+        other.dz=0.0
+        other.dw=0.0
+        return self._quat(other)
+
+    def _tfmat(self,other):
+        """Convert `self' to a transformation matrix and store in `other'"""
+        other[9]  = 0.0
+        other[10] = 0.0
+        other[11] = 0.0
+        return self._rotmat(other)
+
 class OrientationStruct(ctypes.Structure,Orientation):
     __slots__=[]
 
@@ -34,13 +56,7 @@ class PrincipalAngle(Orientation):
         return other * quat(self)
 
 
-    def _duqu(self,other):
-        """Convert `self' to a dual quaternion and store in `other'"""
-        other.dx=0.0
-        other.dy=0.0
-        other.dz=0.0
-        other.dw=0.0
-        return self._quat(other)
+
 
 class XAngle(PrincipalAngle):
     """A rotation about the X axis"""
@@ -128,12 +144,15 @@ class Vec(ctypes.Structure):
                                              self.z)
 
     def __repr__(self):
-        return "Vec([{0}, {1}, {2}])".format(self.x,
+        return "Vec({0}, {1}, {2})".format(self.x,
                                              self.y,
                                              self.z )
 
     def _vec(self,other):
         return aa.fcpy(other,self,3)
+
+    def copy(self):
+        return self._vec(Vec.create())
 
     def cross(self, other):
         """Compute the cross product"""
@@ -235,19 +254,14 @@ class Quat(OrientationStruct):
     def _eulerzyx(self,other):
         return aa.tf_quat2eulerzyx(self,other)
 
+    def copy(self):
+        return self._quat(quat.create())
+
     def orientation(self):
-        return self._quat(Quat.create())
+        return self.copy()
 
     def rotation(self):
         return self._rotmat(RotMat.create())
-
-    def _duqu(self,other):
-        """Copy `self' into the dual quaternion `other'"""
-        other.dx = 0.0
-        other.dy = 0.0
-        other.dz = 0.0
-        other.dw = 0.0
-        return self._quat(other)
 
     def __str__(self):
         return "({0} + {1}i + {2}j + {3}k)".format( self.w,
@@ -256,7 +270,7 @@ class Quat(OrientationStruct):
                                                     self.z)
 
     def __repr__(self):
-        return "Quat([{0}, {1}, {2}, {3}])".format(self.x,
+        return "Quat({0}, {1}, {2}, {3})".format(self.x,
                                                    self.y,
                                                    self.z,
                                                    self.w)
@@ -374,16 +388,14 @@ class RotMat(ctypes.Array,Orientation):
     def _quat(self,other):
         return aa.tf_rotmat2quat(self,other)
 
-    def _duqu(self,other):
-        other.dx = 0.0
-        other.dy = 0.0
-        other.dz = 0.0
-        other.dw = 0.0
-        return self._quat(other)
-
     def _eulerzyx(self,other):
         return aa.tf_rotmat2eulerzyx(self,other)
 
+    def _rotmat(self,other):
+        return aa.fcpy(other,self,9)
+
+    def copy(self):
+        return self._rotmat(Rotmat.create())
 
     def __repr__(self):
         return "RotMat({0},{1},{2}, {3},{4},{5}, {6},{7},{8})".format(
@@ -442,6 +454,16 @@ class TfMat(ctypes.Array):
     def _duqu(self,other):
         return aa.tf_tfmat2duqu(self,other)
 
+    def _qutr(self,other):
+        aa.tf_tfmat2qv(self, other.quat, other.vec)
+        return other
+
+    def _tfmat(self,other):
+        return aa.fcpy(other,self,12)
+
+    def copy(self):
+        return self._tfmat(TfMat.create())
+
     def translation(self):
         return Vec.from_xyz(self[9],self[10],self[11])
 
@@ -499,6 +521,11 @@ class EulerZYX(OrientationStruct):
         return EulerZYX(z,y,x)
 
     @staticmethod
+    def create(y,p,r):
+        """Create a ZYX Euler"""
+        return EulerZYX(0,0,0)
+
+    @staticmethod
     def from_rpy(z,y,x):
         """Create a ZYX Euler angle from roll, pitch, and yaw"""
         return EulerZYX(y,p,r)
@@ -514,18 +541,14 @@ class EulerZYX(OrientationStruct):
     def _quat(self,other):
         return aa.tf_eulerzyx2quat(self.z,self.y,self.x,other)
 
-    def _duqu(self,other):
-        return aa.tf_eulerzyx2quat(self.z,self.y,self.x,other)
-
-    def orientation(self):
-        return self._quat(Quat.create())
-
-    def rotation(self):
-        return self._rotmat(RotMat.create())
-
     def _rotmat(self,other):
         return aa.tf_eulerzyx2rotmat(self.z,self.y,self.x,other)
 
+    def _eulerzyx(self,other):
+        return aa.fcopy(other,self,3)
+
+    def copy(self):
+        return self._eulerzyx(EulerZYX.create())
 
     def __mul__(self,other):
         return quat(self) * other
@@ -535,7 +558,7 @@ class EulerZYX(OrientationStruct):
 
 def eulerzyx(thing):
     """Convert `thing' to an Euler ZYX angle"""
-    return thing._eulerzyx(EulerZYX())
+    return thing._eulerzyx(EulerZYX.create())
 
 ######################
 ## Dual Quaternions ##
@@ -590,6 +613,13 @@ class DuQu(ctypes.Structure):
     def _tfmat(self,other):
         return aa.tf_duqu2tfmat(self,other)
 
+    def _qutr(self,other):
+        aa.tf_duqu2qv(self, other.quat, other.vec)
+        return other
+
+    def copy(self):
+        return self._duqu(DuQu.create())
+
     def orientation(self):
         return self.real()
 
@@ -625,7 +655,7 @@ class DuQu(ctypes.Structure):
                                -self.dx, -self.dy, -self.dz, -self.dw )
 
     def __pos__(self):
-        return self._duqu(DuQu.create())
+        return self.copy()
 
 
     def __len__(self):
@@ -684,5 +714,69 @@ def duqu2(orientation,translation):
 ## Quaternions-Translation ##
 #############################
 
-# class QuTr:
-#     __slots__ = ["quat", "vec"]
+class QuTr:
+    """A Euclidean transformation represented as a quaternion and translation."""
+    __slots__ = ["quat", "vec"]
+
+    @staticmethod
+    def from_elts(rx,ry,rz,rw, tx,ty,tz):
+        """Create a quaternion-translation from elements"""
+        return QuTr( Quat.from_xyzw(rx,ry,rz,rw),
+                     Vec.from_xyz(tx,ty,tz) )
+
+    @staticmethod
+    def identity():
+        return QuTr(Quat.identity(), Vec.from_xyz(0.0,0.0,0.0))
+
+    @staticmethod
+    def create():
+        return QuTr.identity()
+
+    @staticmethod
+    def ensure(thing):
+        return thing if isinstance(thing,QuTr) else qutr(thing)
+
+    def  __init__(self,orientation,translation):
+        self.quat = Quat.ensure(orientation)
+        self.vec = Vec.ensure(translation)
+
+
+    def _duqu(self,other):
+        return aa.tf_qv2duqu(self.quat,self.vec,other)
+
+    def _qutr(self,other):
+        aa.fcpy(other.quat,self.quat,4)
+        aa.fcpy(other.vec,self.vec,3)
+        return a
+
+    def _tfmat(self,other):
+        return aa.tf_qv2tfmat(self.quat,self.vec,other)
+
+    def __repr__(self):
+        return "QuTr( {0}, {1} )".format(
+            self.quat.__repr__(), self.vec.__repr__() )
+
+    def __str__(self):
+        return "{0} | {1}".format(self.quat,self.vec)
+
+    def __mul__(self,other):
+        other = QuTr.ensure(other)
+        result = QuTr.create()
+        aa.tf_qv_chain( self.quat, self.vec,
+                        other.quat, other.vec,
+                        result.quat, result.vec )
+        return result
+
+    def __rmul__(self,other):
+        other = QuTr.ensure(other)
+        result = QuTr.create()
+        aa.tf_qv_chain( other.quat, other.vec,
+                        self.quat, self.vec,
+                        result.quat, result.vec )
+        return result
+
+def qutr(thing):
+    return thing._qutr(QuTr.create())
+
+def qutr2(orientation,translation):
+    return QuTr(orientation,translation)
