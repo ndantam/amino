@@ -34,6 +34,15 @@ class Orientation(object):
         other[11] = 0.0
         return self._rotmat(other)
 
+    def _axisangle(self,other):
+        return self._quat(Quat.create())._axisangle(other)
+
+    def _rotvec(self,other):
+        return self._quat(Quat.create())._rotvec(other)
+
+    def _eulerzyx(self,other):
+        return self._quat(Quat.create())._eulerzyx(other)
+
 class OrientationStruct(ctypes.Structure,Orientation):
     __slots__=[]
 
@@ -139,6 +148,7 @@ class AxisAngle(OrientationStruct):
                 ("y", ctypes.c_double),
                 ("z", ctypes.c_double),
                 ("angle", ctypes.c_double)]
+    __slots__=[]
 
 
     @staticmethod
@@ -162,14 +172,14 @@ class AxisAngle(OrientationStruct):
     def _axisangle(self,other):
         return aa.fcpy(other,self,4)
 
+    def _rotvec(self,other):
+        return aa.tf_axang2rotvec(self,other)
+
     def _quat(self,other):
         return aa.tf_axang2quat(self,other)
 
     def _rotmat(self,other):
         return aa.tf_axang2rotmat(self,other)
-
-    def _eulerzyx(self,other):
-        return self._quat(Quat.create())._eulerzyx(other)
 
     def __str__(self):
         return "(({0}i + {1}j + {2}k), {3})".format(self.x,
@@ -186,6 +196,65 @@ class AxisAngle(OrientationStruct):
 
 def axisangle(thing):
     return thing._axisangle(AxisAngle.create())
+
+#####################
+## Rotation Vector ##
+#####################
+class RotVec(OrientationStruct):
+    """Rotation vectororientation"""
+
+    _fields_ = [("x", ctypes.c_double),
+                ("y", ctypes.c_double),
+                ("z", ctypes.c_double) ]
+    __slots__=[]
+
+    @staticmethod
+    def from_xyz(x,y,z):
+        """Create a rotation vector from x, y, and z components"""
+        return RotVec(x,y,z)
+
+    @staticmethod
+    def create():
+        """Create an axis-angle"""
+        return RotVec()
+
+    @staticmethod
+    def ensure(thing):
+        """Ensure that `thing' is a vector"""
+        return thing if isinstance(thing,RotVec) else rotvec(thing)
+
+    def copy(self):
+        return self._rotvec(RotVec.create())
+
+    def _rotvec(self,other):
+        return aa.fcopy(other,self,3)
+
+    def _axisangle(self,other):
+        return aa.tf_rotvec2axang(self,other)
+
+    def _quat(self,other):
+        return aa.tf_rotvec2quat(self,other)
+
+    def _rotmat(self,other):
+        return self._quat(Quat.create())._rotmat(other)
+
+    def _eulerzyx(self,other):
+        return self._quat(Quat.create())._eulerzyx(other)
+
+    def __str__(self):
+        return "({0}i + {1}j + {2}k)".format(self.x,
+                                                    self.y,
+                                                    self.z,
+                                                    self.angle)
+
+    def __repr__(self):
+        return "RotVec({0}, {1}, {2})".format(self.x,
+                                              self.y,
+                                              self.z)
+
+def rotvec(thing):
+    return thing._rotvec(RotVec.create())
+
 
 ###########
 ## Vector #
@@ -333,6 +402,9 @@ class Quat(OrientationStruct):
     def _axisangle(self,other):
         return aa.tf_quat2axang(self,other)
 
+    def _rotvec(self,other):
+        return aa.tf_quat2rotvec(self,other)
+
     def copy(self):
         return self._quat(quat.create())
 
@@ -474,7 +546,10 @@ class RotMat(ctypes.Array,Orientation):
         return aa.fcpy(other,self,9)
 
     def _axisangle(self,other):
-        return aa.tf_axang2axang(self,other)
+        return aa.tf_rotmat2axang(self,other)
+
+    def _rotvec(self,other):
+        return aa.tf_rotmat2rotvec(self,other)
 
     def copy(self):
         return self._rotmat(Rotmat.create())
@@ -628,6 +703,12 @@ class EulerZYX(OrientationStruct):
 
     def _eulerzyx(self,other):
         return aa.fcopy(other,self,3)
+
+    def _axisangle(self,other):
+        return self._quat(Quat.create())._axisangle(other)
+
+    def _rotvec(self,other):
+        return self._quat(Quat.create())._rotvec(other)
 
     def copy(self):
         return self._eulerzyx(EulerZYX.create())
@@ -796,7 +877,7 @@ def duqu2(orientation,translation):
 ## Quaternions-Translation ##
 #############################
 
-class QuTr:
+class QuTr(object):
     """A Euclidean transformation represented as a quaternion and translation."""
     __slots__ = ["quat", "vec"]
 

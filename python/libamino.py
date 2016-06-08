@@ -89,6 +89,10 @@ def tf_quat2axang(q,a):
     lib.aa_tf_quat2axang(byref(q),byref(a))
     return a
 
+def tf_quat2rotvec(q,a):
+    lib.aa_tf_quat2rotvec(byref(q),byref(a))
+    return a
+
 lib.aa_tf_vdot.restype = c_double
 def tf_vdot(a,b):
     return lib.aa_tf_vdot(byref(a), byref(b))
@@ -108,13 +112,31 @@ def tf_axang2rotmat(a,r):
     lib.aa_tf_axang2rotmat(byref(a),byref(r))
     return r
 
+def tf_axang2rotvec(a,r):
+    lib.aa_tf_axang2rotvec(byref(a),byref(r))
+    return r
+
+#####################
+## Rotation Vector ##
+#####################
+def tf_rotvec2quat(a,q):
+    lib.aa_tf_rotvec2quat(byref(a),byref(q))
+    return q
+
+def tf_rotvec2rotmat(a,r):
+    lib.aa_tf_rotvec2rotmat(byref(a),byref(r))
+    return r
+
+def tf_rotvec2axang(a,r):
+    lib.aa_tf_rotvec2axang(byref(a),byref(r))
+    return r
 
 #####################
 ## Rotation Matrix ##
 #####################
 
 def tf_xangle2rotmat(angle,R):
-    lib.aa_tf_xangle2rotmat(c_double(angle),byre(R))
+    lib.aa_tf_xangle2rotmat(c_double(angle),byref(R))
     return R
 
 def tf_yangle2rotmat(angle,R):
