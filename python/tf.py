@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import libamino as aa
-reload(aa)
+#reload(aa)
 
 import ctypes
 
@@ -72,6 +72,12 @@ class XAngle(PrincipalAngle):
         other.y=0.0
         other.z=0.0
         return other
+    def _axisangle(self,other):
+        other.x=1.0
+        other.y=0.0
+        other.z=0.0
+        other.angle=self.angle
+        return other
 
     def __repr__(self):
         return "XAngle({0})".format(self.angle)
@@ -90,6 +96,12 @@ class YAngle(PrincipalAngle):
         other.y=self.angle
         other.z=0.0
         return other
+    def _axisangle(self,other):
+        other.x=0.0
+        other.y=1.0
+        other.z=0.0
+        other.angle=self.angle
+        return other
 
     def __repr__(self):
         return "YAngle({0})".format(self.angle)
@@ -107,9 +119,73 @@ class ZAngle(PrincipalAngle):
         other.y=0.0
         other.z=self.angle
         return other
+    def _axisangle(self,other):
+        other.x=0.0
+        other.y=0.0
+        other.z=1.0
+        other.angle=self.angle
+        return other
 
     def __repr__(self):
         return "ZAngle({0})".format(self.angle)
+
+#################
+## Axis Angles ##
+#################
+class AxisAngle(OrientationStruct):
+    """Axis-Angle orientation"""
+
+    _fields_ = [("x", ctypes.c_double),
+                ("y", ctypes.c_double),
+                ("z", ctypes.c_double),
+                ("angle", ctypes.c_double)]
+
+
+    @staticmethod
+    def from_xyza(x,y,z,a):
+        """Create an axis-angle from x, y, z, and angle components"""
+        return AxisAngle(x,y,z,a)
+
+    @staticmethod
+    def create():
+        """Create an axis-angle"""
+        return AxisAngle()
+
+    @staticmethod
+    def ensure(thing):
+        """Ensure that `thing' is a vector"""
+        return thing if isinstance(thing,AxisAngle) else axisangle(thing)
+
+    def copy(self):
+        return self._axisangle(AxisAngle.create())
+
+    def _axisangle(self,other):
+        return aa.fcpy(other,self,4)
+
+    def _quat(self,other):
+        return aa.tf_axang2quat(self,other)
+
+    def _rotmat(self,other):
+        return aa.tf_axang2rotmat(self,other)
+
+    def _eulerzyx(self,other):
+        return self._quat(Quat.create())._eulerzyx(other)
+
+    def __str__(self):
+        return "(({0}i + {1}j + {2}k), {3})".format(self.x,
+                                                    self.y,
+                                                    self.z,
+                                                    self.angle)
+
+    def __repr__(self):
+        return "AxisAngle({0}, {1}, {2}, {3})".format(self.x,
+                                                      self.y,
+                                                      self.z,
+                                                      self.angle)
+
+
+def axisangle(thing):
+    return thing._axisangle(AxisAngle.create())
 
 ###########
 ## Vector #
@@ -254,6 +330,9 @@ class Quat(OrientationStruct):
     def _eulerzyx(self,other):
         return aa.tf_quat2eulerzyx(self,other)
 
+    def _axisangle(self,other):
+        return aa.tf_quat2axang(self,other)
+
     def copy(self):
         return self._quat(quat.create())
 
@@ -394,6 +473,9 @@ class RotMat(ctypes.Array,Orientation):
     def _rotmat(self,other):
         return aa.fcpy(other,self,9)
 
+    def _axisangle(self,other):
+        return aa.tf_axang2axang(self,other)
+
     def copy(self):
         return self._rotmat(Rotmat.create())
 
@@ -521,7 +603,7 @@ class EulerZYX(OrientationStruct):
         return EulerZYX(z,y,x)
 
     @staticmethod
-    def create(y,p,r):
+    def create():
         """Create a ZYX Euler"""
         return EulerZYX(0,0,0)
 
