@@ -1,0 +1,36 @@
+language: cpp
+
+matrix:
+  include:
+    - os: linux
+      dist: xenial
+      compiler: gcc
+
+addons:
+  apt:
+    packages:
+      - gfortran
+      - autoconf
+      - automake
+      - autoconf-archive
+      - autotools-dev \
+      - maxima
+      - libblas-dev
+      - liblapack-dev \
+      - libglew-dev
+      - libsdl2-dev
+      - libfcl-dev
+      - libompl-dev
+      - flex
+      - coinor-libclp-dev
+      - libglpk-dev
+      - liblpsolve55-dev
+
+script:
+  - autoreconf -i
+  - mkdir build
+  - cd build
+  - ../configure
+  - make -j4
+  - make check
+
